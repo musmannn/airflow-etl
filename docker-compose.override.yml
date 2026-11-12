@@ -1,0 +1,96 @@
+# Astro CLI merges this file with its generated docker-compose.yml on `astro dev start`.
+# It adds MongoDB (primary database) + Mongo Express (web admin UI), a dedicated
+# Docker network shared with the Airflow containers, and persistent named volumes.
+
+services:
+  # ------------------------------------------------------------------ MongoDB
+  mongodb:
+    image: mongo:7.0
+    hostname: mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-mongo_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo_pass_2026}
+      MONGO_INITDB_DATABASE: currency_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db          # persistent database files
+      - mongo_config:/data/configdb  # persistent config / replica metadata
+      - ./docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro  # creates DB + unique index
+    networks:
+      - currency_etl_net
+    labels:
+      com.mlops.project: currency-exchange-etl
+      maintainer: "24L-0672"
+      org.opencontainers.image.title: "currency-etl-mongodb"
+      org.opencontainers.image.version: "7.0"
+      com.mlops.component: database
+      com.mlops.description: "MongoDB primary database for exchange rates"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ------------------------------------------------------------ Mongo Express
+  mongo-express:
+    image: mongo-express:1.0.2
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-mongo_admin}:${MONGO_ROOT_PASSWORD:-mongo_pass_2026}@mongodb:27017/?authSource=admin
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-admin123}
+    ports:
+      - "8081:8081"
+    networks:
+      - currency_etl_net
+    labels:
+      com.mlops.project: currency-exchange-etl
+      maintainer: "24L-0672"
+      org.opencontainers.image.title: "currency-etl-mongo-express"
+      org.opencontainers.image.version: "1.0.2"
+      com.mlops.component: db-admin-ui
+      com.mlops.description: "Mongo Express web UI for MongoDB"
+
+  # ----------------------------------------- Airflow services join the network
+  # (tasks run inside the scheduler with the LocalExecutor, so it must reach `mongodb`)
+  scheduler:
+    networks:
+      - airflow
+      - currency_etl_net
+  dag-processor:
+    networks:
+      - airflow
+      - currency_etl_net
+  api-server:
+    networks:
+      - airflow
+      - currency_etl_net
+  triggerer:
+    networks:
+      - airflow
+      - currency_etl_net
+
+networks:
+  currency_etl_net:
+    name: currency_etl_net
+    driver: bridge
+    labels:
+      com.mlops.project: currency-exchange-etl
+
+volumes:
+  mongo_data:
+    name: currency_etl_mongo_data
+    labels:
+      com.mlops.project: currency-exchange-etl
+  mongo_config:
+    name: currency_etl_mongo_config
+    labels:
+      com.mlops.project: currency-exchange-etl
