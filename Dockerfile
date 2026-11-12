@@ -1,9 +1,5 @@
-# Astro Runtime 3.3 (Apache Airflow 3.x) — generated layout of `astro dev init`
 FROM astrocrpublic.azurecr.io/runtime:3.3-12
 
-# ---------------------------------------------------------------------------
-# Image metadata (OCI standard labels + project-specific labels)
-# ---------------------------------------------------------------------------
 LABEL maintainer="24L-0672" \
       org.opencontainers.image.title="currency-etl-airflow" \
       org.opencontainers.image.description="Airflow (Astro CLI) ETL pipeline: Frankfurter API daily exchange rates -> transform -> MongoDB" \

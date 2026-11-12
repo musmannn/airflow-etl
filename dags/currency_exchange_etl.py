@@ -1,14 +1,3 @@
-"""
-Currency Exchange Rate ETL  (Frankfurter API  ->  transform  ->  MongoDB)
-
-    extract_exchange_rates  >>  transform_exchange_rates  >>  load_exchange_rates_to_mongodb
-
-Data moves between tasks ONLY through *named* XComs (explicit keys):
-    extract   --xcom key "raw_exchange_rates"         --> transform
-    transform --xcom key "transformed_exchange_rates" --> load
-    load      --xcom key "load_summary"               (final report of the run)
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,7 +13,6 @@ from include.currency_etl.transform import (
     utc_now_iso,
 )
 
-# ---- named XCom keys -------------------------------------------------------
 XCOM_RAW = "raw_exchange_rates"
 XCOM_TRANSFORMED = "transformed_exchange_rates"
 XCOM_LOAD_SUMMARY = "load_summary"
@@ -59,7 +47,6 @@ default_args = {
             description="Optional YYYY-MM-DD. Empty = latest published rates.",
         ),
     },
-    doc_md=__doc__,
 )
 def currency_exchange_etl():
     @task(task_id="extract_exchange_rates")
@@ -112,7 +99,6 @@ def currency_exchange_etl():
             name="uniq_pair_per_day",
         )
 
-        # Upsert -> idempotent: re-running the same day updates instead of duplicating.
         operations = [
             ReplaceOne(
                 {
@@ -120,7 +106,7 @@ def currency_exchange_etl():
                     "target_currency": d["target_currency"],
                     "rate_date": d["rate_date"],
                 },
-                d,  # stored exactly in the required schema / field order
+                d,
                 upsert=True,
             )
             for d in documents

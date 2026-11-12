@@ -1,5 +1,3 @@
-"""DAG integrity tests (run with `astro dev pytest`)."""
-
 from airflow.models import DagBag
 
 DAG_ID = "currency_exchange_etl"

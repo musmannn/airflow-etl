@@ -1,9 +1,4 @@
-# Astro CLI merges this file with its generated docker-compose.yml on `astro dev start`.
-# It adds MongoDB (primary database) + Mongo Express (web admin UI), a dedicated
-# Docker network shared with the Airflow containers, and persistent named volumes.
-
 services:
-  # ------------------------------------------------------------------ MongoDB
   mongodb:
     image: mongo:7.0
     hostname: mongodb
@@ -15,9 +10,9 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db          # persistent database files
-      - mongo_config:/data/configdb  # persistent config / replica metadata
-      - ./docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro  # creates DB + unique index
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - currency_etl_net
     labels:
@@ -34,7 +29,6 @@ services:
       retries: 5
       start_period: 20s
 
-  # ------------------------------------------------------------ Mongo Express
   mongo-express:
     image: mongo-express:1.0.2
     restart: unless-stopped
@@ -59,8 +53,6 @@ services:
       com.mlops.component: db-admin-ui
       com.mlops.description: "Mongo Express web UI for MongoDB"
 
-  # ----------------------------------------- Airflow services join the network
-  # (tasks run inside the scheduler with the LocalExecutor, so it must reach `mongodb`)
   scheduler:
     networks:
       - airflow

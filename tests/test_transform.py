@@ -1,5 +1,3 @@
-"""Unit tests for the transformation logic (no Airflow / network needed)."""
-
 from include.currency_etl.transform import SOURCE_NAME, transform_rates
 
 RAW = [

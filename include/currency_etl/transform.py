@@ -1,5 +1,3 @@
-"""Pure-Python helpers for the currency ETL DAG (kept free of Airflow imports so they are unit-testable)."""
-
 from __future__ import annotations
 
 import re
@@ -12,7 +10,6 @@ SOURCE_NAME = "Frankfurter API"
 DEFAULT_API_URL = "https://api.frankfurter.dev/v2/rates"
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
-# Field order of the target document schema
 SCHEMA_FIELDS = (
     "base_currency",
     "target_currency",
@@ -24,7 +21,6 @@ SCHEMA_FIELDS = (
 
 
 def utc_now_iso() -> str:
-    """Timestamp in the format required by the assignment, e.g. 2026-11-05T07:15:00 (UTC)."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -35,11 +31,6 @@ def fetch_rates(
     api_url: str = DEFAULT_API_URL,
     timeout: int = 30,
 ) -> list[dict[str, Any]]:
-    """Call the Frankfurter v2 API.
-
-    Example: GET https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD,GBP,JPY
-    Response: [{"date": "2026-11-12", "base": "EUR", "quote": "USD", "rate": 1.1139}, ...]
-    """
     params: dict[str, str] = {"base": base.upper(), "quotes": ",".join(q.upper() for q in quotes)}
     if rate_date:
         params["date"] = rate_date
@@ -60,14 +51,6 @@ def _validate_currency(code: Any, field: str) -> str:
 
 
 def transform_rates(raw_records: list[dict[str, Any]], retrieved_at: str) -> list[dict[str, Any]]:
-    """Map raw API records to the target document schema.
-
-    {
-      "base_currency": "EUR", "target_currency": "USD", "exchange_rate": 1.15,
-      "rate_date": "2026-11-04", "source": "Frankfurter API", "retrieved_at": "2026-11-05T07:15:00"
-    }
-    Invalid records (bad currency, non-positive rate, bad date) are skipped.
-    """
     transformed: list[dict[str, Any]] = []
     for record in raw_records:
         try:
@@ -100,9 +83,4 @@ def transform_rates(raw_records: list[dict[str, Any]], retrieved_at: str) -> lis
 
 
 def order_fields(document: dict[str, Any]) -> dict[str, Any]:
-    """Return the document with keys in SCHEMA_FIELDS order.
-
-    Airflow 3 keeps XComs in a Postgres JSONB column, which does not preserve key order,
-    so the load task re-orders each document before writing it to MongoDB.
-    """
     return {field: document[field] for field in SCHEMA_FIELDS}
